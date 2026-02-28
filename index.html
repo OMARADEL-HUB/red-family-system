@@ -31,14 +31,12 @@ button:hover{opacity:0.9}
 
 <div class="container">
 
-<!-- LOGIN -->
 <div id="loginBox">
 <input type="email" id="email" placeholder="البريد الإلكتروني">
 <input type="password" id="password" placeholder="كلمة المرور">
 <button id="loginBtn">تسجيل دخول</button>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard" class="hidden">
 
 <div class="topbar">
@@ -51,20 +49,14 @@ button:hover{opacity:0.9}
 <div id="totalStat">إجمالي المبيعات: <span id="totalBox">0</span> جنيه</div>
 </div>
 
-<!-- ADMIN FAMILY MANAGEMENT -->
 <div id="familySection" class="section hidden">
 <h3>إدارة العائلات</h3>
 <input type="text" id="newFamily" placeholder="اسم العائلة">
 <button id="addFamilyBtn">إضافة عائلة</button>
-
-<select id="familyFilter">
-<option value="">كل العائلات</option>
-</select>
-
+<select id="familyFilter"><option value="">كل العائلات</option></select>
 <div id="familyList"></div>
 </div>
 
-<!-- ADMIN ADD NUMBER -->
 <div id="addSection" class="section hidden">
 <h3>إضافة رقم</h3>
 <input type="text" id="phone" placeholder="رقم الموبايل">
@@ -75,7 +67,6 @@ button:hover{opacity:0.9}
 </div>
 
 <input type="text" id="searchInput" placeholder="بحث برقم...">
-
 <div id="numbersList"></div>
 
 </div>
@@ -88,30 +79,33 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAmstcSyoxzo15KbXda8L8tn-03LclRwkQ",
-  authDomain: "red-family.firebaseapp.com",
-  projectId: "red-family",
-  storageBucket: "red-family.firebasestorage.app",
-  messagingSenderId: "1087910827923",
-  appId: "1:1087910827923:web:6a681071ada3f5d921fa66"
+apiKey: "AIzaSyAmstcSyoxzo15KbXda8L8tn-03LclRwkQ",
+authDomain: "red-family.firebaseapp.com",
+projectId: "red-family",
+storageBucket: "red-family.firebasestorage.app",
+messagingSenderId: "1087910827923",
+appId: "1:1087910827923:web:6a681071ada3f5d921fa66"
 };
 
-const adminEmail = "omaraadlemam5@gmail.com";
+const adminEmail="omaraadlemam5@gmail.com";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
 
-loginBtn.onclick = async ()=>{
-const email=email.value;
-const password=password.value;
-await signInWithEmailAndPassword(auth,email,password).catch(e=>alert(e.message));
+// LOGIN
+document.getElementById("loginBtn").onclick=async()=>{
+const userEmail=document.getElementById("email").value;
+const userPassword=document.getElementById("password").value;
+try{
+await signInWithEmailAndPassword(auth,userEmail,userPassword);
+}catch(e){alert(e.message);}
 };
 
-logoutBtn.onclick=()=>signOut(auth);
+document.getElementById("logoutBtn").onclick=()=>signOut(auth);
 
 // AUTH STATE
-onAuthStateChanged(auth, async (user)=>{
+onAuthStateChanged(auth,async(user)=>{
 
 if(!user){
 loginBox.classList.remove("hidden");
@@ -146,12 +140,11 @@ familySelect.innerHTML='';
 familyList.innerHTML='';
 
 snap.forEach(d=>{
-const f=d.data().name;
-familyFilter.innerHTML+=`<option value="${f}">${f}</option>`;
-familySelect.innerHTML+=`<option value="${f}">${f}</option>`;
-
+const name=d.data().name;
+familyFilter.innerHTML+=`<option value="${name}">${name}</option>`;
+familySelect.innerHTML+=`<option value="${name}">${name}</option>`;
 const div=document.createElement("div");
-div.innerHTML=`${f} <button onclick="deleteFamily('${d.id}')">حذف</button>`;
+div.innerHTML=`${name} <button onclick="deleteFamily('${d.id}')">حذف</button>`;
 familyList.appendChild(div);
 });
 }
@@ -173,7 +166,7 @@ await addDoc(collection(db,"numbers"),{
 phone:phone.value,
 family:familySelect.value,
 rep:rep.value,
-price:parseFloat(price.value),
+price:parseFloat(price.value)||0,
 renewed:false
 });
 location.reload();
@@ -183,14 +176,12 @@ location.reload();
 async function loadNumbers(user){
 
 let snap;
-
 if(user.email===adminEmail){
 snap=await getDocs(collection(db,"numbers"));
 }else{
 const q=query(collection(db,"numbers"),where("rep","==",user.email));
 snap=await getDocs(q);
 }
-
 renderNumbers(snap,user);
 }
 
@@ -202,7 +193,6 @@ let total=0;
 
 snap.forEach(d=>{
 const n=d.data();
-
 if(searchInput.value && !n.phone.includes(searchInput.value))return;
 if(familyFilter.value && n.family!==familyFilter.value)return;
 
