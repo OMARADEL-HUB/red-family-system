@@ -6,52 +6,76 @@
 <title>إدارة خطوط العائلات</title>
 
 <style>
-body{font-family:Arial;direction:rtl;margin:0;background:#f2f4f8}
-header{background:#1e3c72;color:white;padding:15px;text-align:center;font-size:18px}
-.container{padding:15px}
-input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #ccc}
-button{background:#1e3c72;color:white;border:none}
-.card{background:white;padding:12px;margin-top:10px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.1)}
+body{font-family:'Segoe UI',Arial;direction:rtl;margin:0;background:#f4f6f9}
+header{background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;padding:15px;text-align:center;font-size:18px;font-weight:bold}
+.container{padding:15px;max-width:900px;margin:auto}
+.topBar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.roleBadge{padding:6px 12px;border-radius:20px;font-size:13px;font-weight:bold}
+.adminBadge{background:#ffd700}
+.repBadge{background:#d1ecf1}
+input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #ccc;font-size:14px}
+button{background:#1e3c72;color:white;border:none;cursor:pointer}
+button:hover{opacity:0.9}
+.searchBox{margin:10px 0}
+.stats{display:flex;justify-content:space-between;margin:10px 0;font-size:14px}
+.card{background:white;padding:15px;margin-top:10px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.08);transition:0.2s}
+.card:hover{transform:scale(1.01)}
+.renewed{border-right:6px solid #28a745}
+.notRenewed{border-right:6px solid #dc3545}
+.smallBtn{padding:6px 10px;font-size:12px;margin-top:8px;border-radius:6px}
 .hidden{display:none}
-.renewed{background:#d4edda}
-.notRenewed{background:#f8d7da}
-.smallBtn{padding:6px;font-size:13px;margin-top:6px}
 </style>
 </head>
+
 <body>
 
 <header>إدارة خطوط العائلات</header>
 
 <div class="container">
 
+<!-- LOGIN -->
 <div id="loginBox">
 <input type="email" id="email" placeholder="البريد الإلكتروني">
 <input type="password" id="password" placeholder="كلمة المرور">
 <button id="loginBtn">تسجيل دخول</button>
 </div>
 
+<!-- DASHBOARD -->
 <div id="dashboard" class="hidden">
-<button id="logoutBtn">تسجيل خروج</button>
+
+<div class="topBar">
+  <div id="roleBadge" class="roleBadge"></div>
+  <button id="logoutBtn">تسجيل خروج</button>
+</div>
+
+<div class="searchBox">
+  <input type="text" id="searchInput" placeholder="بحث برقم..." />
+</div>
+
+<div class="stats">
+  <div>عدد الأرقام: <span id="countBox">0</span></div>
+  <div>إجمالي المبيعات: <span id="totalBox">0</span> جنيه</div>
+</div>
 
 <div id="adminSection" class="hidden">
-<h3>إضافة رقم</h3>
-<input type="text" id="phone" placeholder="رقم الموبايل">
-<input type="text" id="family" placeholder="العائلة">
-<input type="email" id="rep" placeholder="إيميل المندوب">
-<input type="number" id="price" placeholder="السعر">
-<button id="addBtn">إضافة</button>
+  <h3>إضافة رقم</h3>
+  <input type="text" id="phone" placeholder="رقم الموبايل">
+  <input type="text" id="family" placeholder="العائلة">
+  <input type="email" id="rep" placeholder="إيميل المندوب">
+  <input type="number" id="price" placeholder="السعر">
+  <button id="addBtn">إضافة</button>
 </div>
 
 <div id="numbersList"></div>
-</div>
 
+</div>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAmstcSyoxzo15KbXda8L8tn-03LclRwkQ",
@@ -62,12 +86,13 @@ const firebaseConfig = {
   appId: "1:1087910827923:web:6a681071ada3f5d921fa66"
 };
 
-const adminEmail = "omaraadlemam5@gmail.com";
+const adminEmail = "omaradelmama5@gmail.com";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// LOGIN
 document.getElementById("loginBtn").addEventListener("click", async () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -78,10 +103,12 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
   }
 });
 
+// LOGOUT
 document.getElementById("logoutBtn").addEventListener("click", () => {
   signOut(auth);
 });
 
+// ADD NUMBER (Admin)
 document.getElementById("addBtn").addEventListener("click", async () => {
   const phone = document.getElementById("phone").value;
   const family = document.getElementById("family").value;
@@ -100,53 +127,88 @@ document.getElementById("addBtn").addEventListener("click", async () => {
   location.reload();
 });
 
+// AUTH STATE
 onAuthStateChanged(auth, async (user) => {
+
   if(user){
     loginBox.classList.add("hidden");
     dashboard.classList.remove("hidden");
 
+    const roleBadge = document.getElementById("roleBadge");
+
+    let snapshot;
+
     if(user.email === adminEmail){
+      roleBadge.innerText = "👑 Admin";
+      roleBadge.className = "roleBadge adminBadge";
       adminSection.classList.remove("hidden");
+      snapshot = await getDocs(collection(db,"numbers"));
+    }else{
+      roleBadge.innerText = "👤 مندوب";
+      roleBadge.className = "roleBadge repBadge";
+      const q = query(collection(db,"numbers"), where("rep","==",user.email));
+      snapshot = await getDocs(q);
     }
 
-    const snapshot = await getDocs(collection(db,"numbers"));
-    numbersList.innerHTML="";
-
-    snapshot.forEach(async d=>{
-      const n = d.data();
-
-      if(user.email !== adminEmail && n.rep !== user.email) return;
-
-      const card = document.createElement("div");
-      card.className = "card " + (n.renewed ? "renewed" : "notRenewed");
-
-      card.innerHTML = `
-        <strong>${n.phone}</strong><br>
-        العائلة: ${n.family}<br>
-        السعر: ${n.price}<br>
-        الحالة: ${n.renewed ? "متجدد ✅" : "غير متجدد ❌"}
-      `;
-
-      if(user.email === adminEmail){
-        const btn = document.createElement("button");
-        btn.className="smallBtn";
-        btn.innerText="تغيير حالة التجديد";
-        btn.onclick = async ()=>{
-          await updateDoc(doc(db,"numbers",d.id),{
-            renewed: !n.renewed
-          });
-          location.reload();
-        };
-        card.appendChild(btn);
-      }
-
-      numbersList.appendChild(card);
-    });
+    renderNumbers(snapshot,user);
 
   }else{
     loginBox.classList.remove("hidden");
     dashboard.classList.add("hidden");
   }
+});
+
+// RENDER
+async function renderNumbers(snapshot,user){
+
+  const numbersList = document.getElementById("numbersList");
+  const searchValue = document.getElementById("searchInput").value || "";
+  numbersList.innerHTML="";
+
+  let count = 0;
+  let total = 0;
+
+  snapshot.forEach(d=>{
+    const n = d.data();
+
+    if(searchValue && !n.phone.includes(searchValue)) return;
+
+    count++;
+    total += n.price || 0;
+
+    const card = document.createElement("div");
+    card.className = "card " + (n.renewed ? "renewed" : "notRenewed");
+
+    card.innerHTML = `
+      <strong>${n.phone}</strong><br>
+      👨‍👩‍👧 العائلة: ${n.family}<br>
+      💰 السعر: ${n.price} جنيه<br>
+      🔄 الحالة: ${n.renewed ? "متجدد" : "غير متجدد"}
+    `;
+
+    if(user.email === adminEmail){
+      const btn = document.createElement("button");
+      btn.className="smallBtn";
+      btn.innerText="تغيير حالة التجديد";
+      btn.onclick = async ()=>{
+        await updateDoc(doc(db,"numbers",d.id),{
+          renewed: !n.renewed
+        });
+        location.reload();
+      };
+      card.appendChild(btn);
+    }
+
+    numbersList.appendChild(card);
+  });
+
+  document.getElementById("countBox").innerText = count;
+  document.getElementById("totalBox").innerText = total;
+}
+
+// SEARCH
+document.getElementById("searchInput").addEventListener("input", ()=>{
+  location.reload();
 });
 
 </script>
