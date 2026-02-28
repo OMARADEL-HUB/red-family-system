@@ -4,14 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>إدارة خطوط العائلات</title>
+
 <style>
 body{font-family:Arial;direction:rtl;margin:0;background:#f2f4f8}
-header{background:#1e3c72;color:white;padding:15px;text-align:center}
+header{background:#1e3c72;color:white;padding:15px;text-align:center;font-size:18px}
 .container{padding:15px}
 input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #ccc}
 button{background:#1e3c72;color:white;border:none}
-.card{background:white;padding:12px;margin-top:10px;border-radius:10px}
+.card{background:white;padding:12px;margin-top:10px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,0.1)}
 .hidden{display:none}
+.renewed{background:#d4edda}
+.notRenewed{background:#f8d7da}
+.smallBtn{padding:6px;font-size:13px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -28,6 +32,16 @@ button{background:#1e3c72;color:white;border:none}
 
 <div id="dashboard" class="hidden">
 <button id="logoutBtn">تسجيل خروج</button>
+
+<div id="adminSection" class="hidden">
+<h3>إضافة رقم</h3>
+<input type="text" id="phone" placeholder="رقم الموبايل">
+<input type="text" id="family" placeholder="العائلة">
+<input type="email" id="rep" placeholder="إيميل المندوب">
+<input type="number" id="price" placeholder="السعر">
+<button id="addBtn">إضافة</button>
+</div>
+
 <div id="numbersList"></div>
 </div>
 
@@ -37,7 +51,7 @@ button{background:#1e3c72;color:white;border:none}
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAmstcSyoxzo15KbXda8L8tn-03LclRwkQ",
@@ -48,13 +62,15 @@ const firebaseConfig = {
   appId: "1:1087910827923:web:6a681071ada3f5d921fa66"
 };
 
+const adminEmail = "omaradelmama5@gmail.com";
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = emailInput.value;
+  const password = passwordInput.value;
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (err) {
@@ -66,29 +82,70 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   signOut(auth);
 });
 
+document.getElementById("addBtn").addEventListener("click", async () => {
+  const phone = phoneInput.value;
+  const family = familyInput.value;
+  const rep = repInput.value;
+  const price = parseFloat(priceInput.value);
+
+  if(!phone || !family || !rep){
+    alert("اكمل البيانات");
+    return;
+  }
+
+  await addDoc(collection(db,"numbers"),{
+    phone,family,rep,price,renewed:false
+  });
+
+  location.reload();
+});
+
 onAuthStateChanged(auth, async (user) => {
   if(user){
-    document.getElementById("loginBox").classList.add("hidden");
-    document.getElementById("dashboard").classList.remove("hidden");
+    loginBox.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+
+    if(user.email === adminEmail){
+      adminSection.classList.remove("hidden");
+    }
 
     const snapshot = await getDocs(collection(db,"numbers"));
-    const list = document.getElementById("numbersList");
-    list.innerHTML="";
-    snapshot.forEach(doc=>{
-      const n = doc.data();
-      list.innerHTML += `
-        <div class="card">
-          <strong>${n.phone}</strong><br>
-          العائلة: ${n.family}<br>
-          السعر: ${n.price}<br>
-          الحالة: ${n.renewed ? "متجدد ✅" : "غير متجدد ❌"}
-        </div>
+    numbersList.innerHTML="";
+
+    snapshot.forEach(async d=>{
+      const n = d.data();
+
+      if(user.email !== adminEmail && n.rep !== user.email) return;
+
+      const card = document.createElement("div");
+      card.className = "card " + (n.renewed ? "renewed" : "notRenewed");
+
+      card.innerHTML = `
+        <strong>${n.phone}</strong><br>
+        العائلة: ${n.family}<br>
+        السعر: ${n.price}<br>
+        الحالة: ${n.renewed ? "متجدد ✅" : "غير متجدد ❌"}
       `;
+
+      if(user.email === adminEmail){
+        const btn = document.createElement("button");
+        btn.className="smallBtn";
+        btn.innerText="تغيير حالة التجديد";
+        btn.onclick = async ()=>{
+          await updateDoc(doc(db,"numbers",d.id),{
+            renewed: !n.renewed
+          });
+          location.reload();
+        };
+        card.appendChild(btn);
+      }
+
+      numbersList.appendChild(card);
     });
 
-  } else {
-    document.getElementById("loginBox").classList.remove("hidden");
-    document.getElementById("dashboard").classList.add("hidden");
+  }else{
+    loginBox.classList.remove("hidden");
+    dashboard.classList.add("hidden");
   }
 });
 
