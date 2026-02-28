@@ -3,33 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>إدارة خطوط العائلات</title>
+<title>نظام إدارة الخطوط</title>
 
 <style>
-body{font-family:'Segoe UI',Arial;direction:rtl;margin:0;background:#f4f6f9}
+body{font-family:'Segoe UI';direction:rtl;margin:0;background:#f4f6f9}
 header{background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;padding:15px;text-align:center;font-size:18px;font-weight:bold}
-.container{padding:15px;max-width:900px;margin:auto}
-.topBar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.roleBadge{padding:6px 12px;border-radius:20px;font-size:13px;font-weight:bold}
-.adminBadge{background:#ffd700}
-.repBadge{background:#d1ecf1}
-input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #ccc;font-size:14px}
+.container{max-width:1000px;margin:auto;padding:15px}
+.hidden{display:none}
+input,select,button{width:100%;padding:10px;margin:5px 0;border-radius:8px;border:1px solid #ccc}
 button{background:#1e3c72;color:white;border:none;cursor:pointer}
 button:hover{opacity:0.9}
-.searchBox{margin:10px 0}
-.stats{display:flex;justify-content:space-between;margin:10px 0;font-size:14px}
-.card{background:white;padding:15px;margin-top:10px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.08);transition:0.2s}
-.card:hover{transform:scale(1.01)}
-.renewed{border-right:6px solid #28a745}
-.notRenewed{border-right:6px solid #dc3545}
-.smallBtn{padding:6px 10px;font-size:12px;margin-top:8px;border-radius:6px}
-.hidden{display:none}
+.card{background:#fff;padding:15px;margin-top:10px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.1)}
+.renewed{border-right:5px solid #28a745}
+.notRenewed{border-right:5px solid #dc3545}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+.badge{padding:6px 12px;border-radius:20px;font-size:13px;font-weight:bold}
+.admin{background:#ffd700}
+.rep{background:#d1ecf1}
+.section{background:white;padding:15px;border-radius:12px;margin-top:15px}
+.stats{display:flex;justify-content:space-between;margin-top:10px;font-size:14px}
 </style>
 </head>
 
 <body>
 
-<header>إدارة خطوط العائلات</header>
+<header>نظام إدارة الخطوط</header>
 
 <div class="container">
 
@@ -43,28 +41,40 @@ button:hover{opacity:0.9}
 <!-- DASHBOARD -->
 <div id="dashboard" class="hidden">
 
-<div class="topBar">
-  <div id="roleBadge" class="roleBadge"></div>
-  <button id="logoutBtn">تسجيل خروج</button>
-</div>
-
-<div class="searchBox">
-  <input type="text" id="searchInput" placeholder="بحث برقم..." />
+<div class="topbar">
+<div id="roleBadge" class="badge"></div>
+<button id="logoutBtn">تسجيل خروج</button>
 </div>
 
 <div class="stats">
-  <div>عدد الأرقام: <span id="countBox">0</span></div>
-  <div>إجمالي المبيعات: <span id="totalBox">0</span> جنيه</div>
+<div>عدد الأرقام: <span id="countBox">0</span></div>
+<div id="totalStat">إجمالي المبيعات: <span id="totalBox">0</span> جنيه</div>
 </div>
 
-<div id="adminSection" class="hidden">
-  <h3>إضافة رقم</h3>
-  <input type="text" id="phone" placeholder="رقم الموبايل">
-  <input type="text" id="family" placeholder="العائلة">
-  <input type="email" id="rep" placeholder="إيميل المندوب">
-  <input type="number" id="price" placeholder="السعر">
-  <button id="addBtn">إضافة</button>
+<!-- ADMIN FAMILY MANAGEMENT -->
+<div id="familySection" class="section hidden">
+<h3>إدارة العائلات</h3>
+<input type="text" id="newFamily" placeholder="اسم العائلة">
+<button id="addFamilyBtn">إضافة عائلة</button>
+
+<select id="familyFilter">
+<option value="">كل العائلات</option>
+</select>
+
+<div id="familyList"></div>
 </div>
+
+<!-- ADMIN ADD NUMBER -->
+<div id="addSection" class="section hidden">
+<h3>إضافة رقم</h3>
+<input type="text" id="phone" placeholder="رقم الموبايل">
+<select id="familySelect"></select>
+<input type="email" id="rep" placeholder="إيميل المندوب">
+<input type="number" id="price" placeholder="السعر">
+<button id="addBtn">إضافة</button>
+</div>
+
+<input type="text" id="searchInput" placeholder="بحث برقم...">
 
 <div id="numbersList"></div>
 
@@ -75,7 +85,7 @@ button:hover{opacity:0.9}
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAmstcSyoxzo15KbXda8L8tn-03LclRwkQ",
@@ -92,126 +102,146 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// LOGIN
-document.getElementById("loginBtn").addEventListener("click", async () => {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-  } catch (err) {
-    alert(err.message);
-  }
-});
+loginBtn.onclick = async ()=>{
+const email=email.value;
+const password=password.value;
+await signInWithEmailAndPassword(auth,email,password).catch(e=>alert(e.message));
+};
 
-// LOGOUT
-document.getElementById("logoutBtn").addEventListener("click", () => {
-  signOut(auth);
-});
-
-// ADD NUMBER (Admin)
-document.getElementById("addBtn").addEventListener("click", async () => {
-  const phone = document.getElementById("phone").value;
-  const family = document.getElementById("family").value;
-  const rep = document.getElementById("rep").value;
-  const price = parseFloat(document.getElementById("price").value);
-
-  if(!phone || !family || !rep){
-    alert("اكمل البيانات");
-    return;
-  }
-
-  await addDoc(collection(db,"numbers"),{
-    phone,family,rep,price,renewed:false
-  });
-
-  location.reload();
-});
+logoutBtn.onclick=()=>signOut(auth);
 
 // AUTH STATE
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, async (user)=>{
 
-  if(user){
-    loginBox.classList.add("hidden");
-    dashboard.classList.remove("hidden");
-
-    const roleBadge = document.getElementById("roleBadge");
-
-    let snapshot;
-
-    if(user.email === adminEmail){
-      roleBadge.innerText = "👑 Admin";
-      roleBadge.className = "roleBadge adminBadge";
-      adminSection.classList.remove("hidden");
-      snapshot = await getDocs(collection(db,"numbers"));
-    }else{
-      roleBadge.innerText = "👤 مندوب";
-      roleBadge.className = "roleBadge repBadge";
-      const q = query(collection(db,"numbers"), where("rep","==",user.email));
-      snapshot = await getDocs(q);
-    }
-
-    renderNumbers(snapshot,user);
-
-  }else{
-    loginBox.classList.remove("hidden");
-    dashboard.classList.add("hidden");
-  }
-});
-
-// RENDER
-async function renderNumbers(snapshot,user){
-
-  const numbersList = document.getElementById("numbersList");
-  const searchValue = document.getElementById("searchInput").value || "";
-  numbersList.innerHTML="";
-
-  let count = 0;
-  let total = 0;
-
-  snapshot.forEach(d=>{
-    const n = d.data();
-
-    if(searchValue && !n.phone.includes(searchValue)) return;
-
-    count++;
-    total += n.price || 0;
-
-    const card = document.createElement("div");
-    card.className = "card " + (n.renewed ? "renewed" : "notRenewed");
-
-    card.innerHTML = `
-      <strong>${n.phone}</strong><br>
-      👨‍👩‍👧 العائلة: ${n.family}<br>
-      💰 السعر: ${n.price} جنيه<br>
-      🔄 الحالة: ${n.renewed ? "متجدد" : "غير متجدد"}
-    `;
-
-    if(user.email === adminEmail){
-      const btn = document.createElement("button");
-      btn.className="smallBtn";
-      btn.innerText="تغيير حالة التجديد";
-      btn.onclick = async ()=>{
-        await updateDoc(doc(db,"numbers",d.id),{
-          renewed: !n.renewed
-        });
-        location.reload();
-      };
-      card.appendChild(btn);
-    }
-
-    numbersList.appendChild(card);
-  });
-
-  document.getElementById("countBox").innerText = count;
-  document.getElementById("totalBox").innerText = total;
+if(!user){
+loginBox.classList.remove("hidden");
+dashboard.classList.add("hidden");
+return;
 }
 
-// SEARCH
-document.getElementById("searchInput").addEventListener("input", ()=>{
-  location.reload();
+loginBox.classList.add("hidden");
+dashboard.classList.remove("hidden");
+
+if(user.email===adminEmail){
+roleBadge.innerText="👑 Admin";
+roleBadge.className="badge admin";
+familySection.classList.remove("hidden");
+addSection.classList.remove("hidden");
+totalStat.style.display="block";
+await loadFamilies();
+}else{
+roleBadge.innerText="👤 مندوب";
+roleBadge.className="badge rep";
+totalStat.style.display="none";
+}
+
+loadNumbers(user);
 });
 
-</script>
+// LOAD FAMILIES
+async function loadFamilies(){
+const snap=await getDocs(collection(db,"families"));
+familyFilter.innerHTML='<option value="">كل العائلات</option>';
+familySelect.innerHTML='';
+familyList.innerHTML='';
 
+snap.forEach(d=>{
+const f=d.data().name;
+familyFilter.innerHTML+=`<option value="${f}">${f}</option>`;
+familySelect.innerHTML+=`<option value="${f}">${f}</option>`;
+
+const div=document.createElement("div");
+div.innerHTML=`${f} <button onclick="deleteFamily('${d.id}')">حذف</button>`;
+familyList.appendChild(div);
+});
+}
+
+window.deleteFamily=async(id)=>{
+await deleteDoc(doc(db,"families",id));
+loadFamilies();
+};
+
+addFamilyBtn.onclick=async()=>{
+if(!newFamily.value)return;
+await addDoc(collection(db,"families"),{name:newFamily.value});
+newFamily.value="";
+loadFamilies();
+};
+
+addBtn.onclick=async()=>{
+await addDoc(collection(db,"numbers"),{
+phone:phone.value,
+family:familySelect.value,
+rep:rep.value,
+price:parseFloat(price.value),
+renewed:false
+});
+location.reload();
+};
+
+// LOAD NUMBERS
+async function loadNumbers(user){
+
+let snap;
+
+if(user.email===adminEmail){
+snap=await getDocs(collection(db,"numbers"));
+}else{
+const q=query(collection(db,"numbers"),where("rep","==",user.email));
+snap=await getDocs(q);
+}
+
+renderNumbers(snap,user);
+}
+
+function renderNumbers(snap,user){
+
+numbersList.innerHTML="";
+let count=0;
+let total=0;
+
+snap.forEach(d=>{
+const n=d.data();
+
+if(searchInput.value && !n.phone.includes(searchInput.value))return;
+if(familyFilter.value && n.family!==familyFilter.value)return;
+
+count++;
+total+=n.price||0;
+
+const card=document.createElement("div");
+card.className="card "+(n.renewed?"renewed":"notRenewed");
+
+if(user.email===adminEmail){
+card.innerHTML=`
+<strong>${n.phone}</strong><br>
+👨‍👩‍👧 ${n.family}<br>
+💰 ${n.price} جنيه<br>
+🔄 ${n.renewed?"متجدد":"غير متجدد"}
+<button onclick="toggleRenew('${d.id}',${n.renewed})">تغيير الحالة</button>
+`;
+}else{
+card.innerHTML=`
+<strong>${n.phone}</strong><br>
+🔄 ${n.renewed?"متجدد ✅":"غير متجدد ❌"}
+`;
+}
+
+numbersList.appendChild(card);
+});
+
+countBox.innerText=count;
+totalBox.innerText=total;
+}
+
+window.toggleRenew=async(id,state)=>{
+await updateDoc(doc(db,"numbers",id),{renewed:!state});
+location.reload();
+};
+
+searchInput.oninput=()=>location.reload();
+familyFilter.onchange=()=>location.reload();
+
+</script>
 </body>
 </html>
