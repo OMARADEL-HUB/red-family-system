@@ -83,10 +83,10 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 });
 
 document.getElementById("addBtn").addEventListener("click", async () => {
-  const phone = phoneInput.value;
-  const family = familyInput.value;
-  const rep = repInput.value;
-  const price = parseFloat(priceInput.value);
+  const phone = document.getElementById("phone").value;
+  const family = document.getElementById("family").value;
+  const rep = document.getElementById("rep").value;
+  const price = parseFloat(document.getElementById("price").value);
 
   if(!phone || !family || !rep){
     alert("اكمل البيانات");
