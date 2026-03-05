@@ -1,4 +1,117 @@
-<script type="module">
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>نظام إدارة الخطوط</title>
+	<style>
+		:root{--primary:#4a90e2;--muted:#f8f9fa;--card-bg:#ffffff;--gradient:linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);--text:#333;--shadow:0 4px 12px rgba(0,0,0,0.1)}
+		body{font-family:Arial,Segoe UI,system-ui;direction:rtl;margin:0;background:var(--gradient);color:var(--text);min-height:100vh;line-height:1.6}
+		header{background:var(--primary);color:white;padding:18px;text-align:center;font-size:20px}
+		.container{max-width:980px;margin:auto;padding:18px}
+		/* inputs full width, buttons sized to content unless .full */
+		input,textarea,select{width:100%;padding:14px;margin:8px 0;border-radius:10px;border:1px solid #ddd;box-sizing:border-box;font-size:16px;min-height:48px}
+		button{padding:12px 16px;background:var(--primary);color:white;cursor:pointer;font-weight:600;border-radius:8px;border:none;transition:background 0.2s}
+		button:hover{background:#357abd}
+		button.full{width:100%}
+		.card{background:var(--card-bg);padding:12px;border-radius:10px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;margin:10px 0;transition:transform 0.2s;transform:translateY(0);border:1px solid #e0e0e0}
+		.card:hover{transform:translateY(-2px)}
+		/* status visuals */
+		.renewed{box-shadow:0 4px 12px rgba(34,197,94,0.15);}
+		.notRenewed{box-shadow:0 4px 12px rgba(239,68,68,0.15);}
+		.hidden{display:none}
+		.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0}
+		.statCard{padding:14px;border-radius:10px;text-align:center;background:var(--card-bg);transition:transform 0.2s;transform:translateY(0);box-shadow:var(--shadow);border:1px solid #e0e0e0}
+		.statCard:hover{transform:translateY(-2px)}
+		.statCard span{display:block;font-size:13px;color:#666}
+		.statCard h2{margin:6px 0;color:var(--primary)}
+		/* numbers list grid */
+		#numbersList{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:10px}
+		/* card content layout */
+		.card .phone{font-size:16px;font-weight:700;color:#111}
+		.card .meta{font-size:13px;color:#555}
+		.card .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+		.card .actions{display:flex;gap:8px;margin-top:8px}
+		.card .actions button{padding:8px 12px;border-radius:8px;border:none}
+		.card .actions button.danger{background:#e74c3c}
+		.card .actions button.danger:hover{background:#c0392b}
+		.card .actions button.ghost{background:#eef2f7;color:#111}
+		.status-badge{padding:6px 10px;border-radius:999px;font-size:12px;color:white}
+		.renewed .status-badge{background:#16a34a}
+		.notRenewed .status-badge{background:#ef4444}
+		/* admin controls */
+		#adminControls{display:flex;justify-content:flex-end;gap:8px}
+		#resetBtn{background:#f59e0b}
+		#renewedSection, #notRenewedSection{margin:20px 0;padding:15px;border-radius:10px;background:rgba(255,255,255,0.8)}
+		#renewedSection h3{color:#16a34a}
+		#notRenewedSection h3{color:#ef4444}
+		#renewedList, #notRenewedList{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:15px;margin-top:10px}
+		@media (max-width:560px){
+			.container{padding:12px}
+			header{font-size:18px;padding:15px}
+			.card{font-size:16px;padding:15px}
+			button{font-size:16px;padding:12px}
+			.statCard h2{font-size:24px}
+			#renewedList, #notRenewedList{grid-template-columns:1fr;gap:10px}
+			.row{flex-direction:column;gap:10px}
+			.actions{flex-direction:column}
+			.actions button{margin:5px 0}
+		}
+	</style>
+</head>
+<body>
+	<header>نظام إدارة الخطوط</header>
+	<div class="container">
+		<div id="loginBox">
+			<input id="email" placeholder="الإيميل">
+			<input id="password" type="password" placeholder="الباسورد">
+			<button id="loginBtn" class="full">تسجيل دخول</button>
+		</div>
+
+		<div id="dashboard" class="hidden">
+			<button id="logoutBtn">تسجيل خروج</button>
+			<button id="requestsBtn" class="hidden">الطلبات</button>
+
+			<div id="addSection" class="hidden card">
+				<h3>إضافة رقم</h3>
+				<input id="phoneInput" placeholder="الرقم">
+				<input id="familyInput" placeholder="العائلة">
+				<input id="repInput" placeholder="ايميل المندوب">
+				<input id="priceInput" type="number" placeholder="السعر">
+				<button id="addBtn" class="full">إضافة</button>
+			</div>
+
+			<div id="adminControls" class="card">
+				<button id="resetBtn" class="hidden">إلغاء حالة الكل</button>
+				<button id="viewRequestsBtn" class="hidden">عرض الطلبات</button>
+			</div>
+
+			<div class="stats">
+				<div class="statCard"><span>إجمالي الأرقام</span><h2 id="statTotal">0</h2></div>
+				<div class="statCard"><span>المتجدد</span><h2 id="statRenewed">0</h2></div>
+				<div class="statCard"><span>غير المتجدد</span><h2 id="statNotRenewed">0</h2></div>
+				<div class="statCard" id="moneyBox"><span>إجمالي المبيعات</span><h2 id="statMoney">0</h2></div>
+			</div>
+
+			<input id="searchInput" placeholder="بحث برقم">
+			<div id="renewedSection">
+				<h3>الخطوط المتجددة</h3>
+				<div id="renewedList"></div>
+			</div>
+			<div id="notRenewedSection">
+				<h3>الخطوط غير المتجددة</h3>
+				<div id="notRenewedList"></div>
+			</div>
+
+			<!-- Requests section for admin -->
+			<div id="requestsSection" class="hidden card">
+				<h3>الطلبات الواردة</h3>
+				<div id="requestsList"></div>
+			</div>
+		</div>
+	</div>
+
+	<script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
@@ -67,10 +180,12 @@ if(user.email === adminEmail){
 
 addSection.classList.remove("hidden");
 resetBtn.classList.remove("hidden");
+viewRequestsBtn.classList.remove("hidden");
 
 }else{
 
 addSection.classList.add("hidden");
+requestsBtn.classList.remove("hidden");
 
 }
 
@@ -107,18 +222,81 @@ if(!confirm("هل تريد جعل كل الأرقام غير متجددة؟")) r
 
 const snapshot = await getDocs(collection(db,"numbers"));
 
-snapshot.forEach(async d=>{
+const updates = snapshot.docs.map(d => updateDoc(doc(db,"numbers",d.id),{ renewed:false }));
 
-await updateDoc(doc(db,"numbers",d.id),{
-
-renewed:false
-
-});
-
-});
+await Promise.all(updates);
 
 location.reload();
 
+};
+
+
+requestsBtn && (requestsBtn.onclick = async ()=>{
+	const user = auth.currentUser;
+	if(!user){ alert('يجب تسجيل الدخول أولاً'); return; }
+	const text = prompt('أدخل طلبك العام (مثال: طلب إضافة دقائق لمجموعة من الأرقام)');
+	if(!text) return;
+	await addDoc(collection(db,'requests'),{
+		phone: null,
+		rep: user.email,
+		message: text,
+		status: 'pending',
+		createdAt: new Date().toISOString()
+	});
+	alert('تم إرسال الطلب');
+});
+
+// Admin: open requests list and load requests
+viewRequestsBtn && (viewRequestsBtn.onclick = async ()=>{
+	requestsSection.classList.remove('hidden');
+	// load and render requests
+	await loadRequests();
+});
+
+async function loadRequests(){
+	const snap = await getDocs(collection(db,'requests'));
+	renderRequests(snap);
+}
+
+function renderRequests(snapshot){
+	requestsList.innerHTML = '';
+	snapshot.forEach(d=>{
+		const r = d.data();
+		const item = document.createElement('div');
+		item.className = 'card';
+		item.innerHTML = `
+			<div class="row">
+				<div>
+					<div class="phone">${r.phone || 'عام'}</div>
+					<div class="meta">من: ${r.rep} · الحالة: ${r.status}</div>
+				</div>
+				<div style="text-align:left;font-size:12px;color:#666">${r.createdAt ? r.createdAt.split('T')[0] : ''}</div>
+			</div>
+			<div class="meta">${r.message}</div>
+			<div class="actions">
+				<button onclick="approveRequest('${d.id}')">قبول</button>
+				<button onclick="rejectRequest('${d.id}')" class="ghost">رفض</button>
+				<button onclick="deleteRequest('${d.id}')" class="danger">حذف</button>
+			</div>
+		`;
+		requestsList.appendChild(item);
+	});
+}
+
+window.approveRequest = async (id) => {
+	await updateDoc(doc(db,'requests',id),{ status:'approved', handledBy: auth.currentUser?.email || null, handledAt: new Date().toISOString() });
+	await loadRequests();
+};
+
+window.rejectRequest = async (id) => {
+	await updateDoc(doc(db,'requests',id),{ status:'rejected', handledBy: auth.currentUser?.email || null, handledAt: new Date().toISOString() });
+	await loadRequests();
+};
+
+window.deleteRequest = async (id) => {
+	if(!confirm('حذف الطلب نهائياً؟')) return;
+	await deleteDoc(doc(db,'requests',id));
+	await loadRequests();
 };
 
 
@@ -145,7 +323,8 @@ render(snapshot,user);
 
 function render(snapshot,user){
 
-numbersList.innerHTML="";
+renewedList.innerHTML="";
+notRenewedList.innerHTML="";
 
 let total=0;
 let renewed=0;
@@ -186,6 +365,9 @@ card.innerHTML=`
 <button onclick="toggle('${d.id}',${n.renewed})">
 تغيير الحالة
 </button>
+<button onclick="deleteNumber('${d.id}')" class="danger">
+حذف
+</button>
 `;
 
 }else{
@@ -197,7 +379,11 @@ card.innerHTML=`
 
 }
 
-numbersList.appendChild(card);
+if(n.renewed){
+	renewedList.appendChild(card);
+}else{
+	notRenewedList.appendChild(card);
+}
 
 });
 
@@ -217,6 +403,8 @@ moneyBox.style.display="none";
 
 window.toggle = async (id,state)=>{
 
+try {
+
 await updateDoc(doc(db,"numbers",id),{
 
 renewed:!state
@@ -225,9 +413,30 @@ renewed:!state
 
 location.reload();
 
+} catch (e) {
+
+alert('خطأ في تغيير الحالة: ' + e.message);
+
+}
+
 };
 
 
 searchInput.oninput = ()=> location.reload();
 
+window.deleteNumber = async (id) => {
+	if(!confirm('هل تريد حذف هذا الرقم نهائياً؟')) return;
+	try {
+		console.log('Deleting document with id:', id);
+		await deleteDoc(doc(db, 'numbers', id));
+		console.log('Deleted successfully');
+		location.reload();
+	} catch (e) {
+		console.error('Delete error:', e);
+		alert('خطأ في الحذف: ' + e.message);
+	}
+};
+
 </script>
+</body>
+</html>
