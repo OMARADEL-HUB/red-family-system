@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>نظام إدارة الخطوط</title>
 
 <style>
@@ -168,6 +169,7 @@ from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, where }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+
 const firebaseConfig = {
 
 apiKey: "AIzaSyAmstcSyoxzo15KbXda8L8tn-03LclRwkQ",
@@ -179,21 +181,22 @@ appId: "1:1087910827923:web:6a681071ada3f5d921fa66"
 
 };
 
-const adminEmail="omaraadlemam5@gmail.com";
 
-const app=initializeApp(firebaseConfig);
-const auth=getAuth(app);
-const db=getFirestore(app);
+const adminEmail = "omaraadlemam5@gmail.com";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 
-loginBtn.onclick=async()=>{
+document.getElementById("loginBtn").onclick = async ()=>{
 
-const email=email.value;
-const password=password.value;
+const userEmail = document.getElementById("email").value;
+const userPassword = document.getElementById("password").value;
 
 try{
 
-await signInWithEmailAndPassword(auth,email,password);
+await signInWithEmailAndPassword(auth,userEmail,userPassword);
 
 }catch(e){
 
@@ -203,15 +206,21 @@ alert(e.message);
 
 };
 
-logoutBtn.onclick=()=>signOut(auth);
+
+document.getElementById("logoutBtn").onclick = ()=>{
+
+signOut(auth);
+
+};
 
 
-onAuthStateChanged(auth,async(user)=>{
+onAuthStateChanged(auth, async (user)=>{
 
 if(!user){
 
 loginBox.classList.remove("hidden");
 dashboard.classList.add("hidden");
+
 return;
 
 }
@@ -219,7 +228,8 @@ return;
 loginBox.classList.add("hidden");
 dashboard.classList.remove("hidden");
 
-if(user.email===adminEmail){
+
+if(user.email === adminEmail){
 
 addSection.classList.remove("hidden");
 
@@ -234,14 +244,19 @@ loadNumbers(user);
 });
 
 
-addBtn.onclick=async()=>{
+document.getElementById("addBtn").onclick = async ()=>{
+
+const phone = document.getElementById("phone").value;
+const family = document.getElementById("family").value;
+const rep = document.getElementById("rep").value;
+const price = Number(document.getElementById("price").value);
 
 await addDoc(collection(db,"numbers"),{
 
-phone:phone.value,
-family:family.value,
-rep:rep.value,
-price:Number(price.value)||0,
+phone,
+family,
+rep,
+price,
 renewed:false
 
 });
@@ -255,15 +270,15 @@ async function loadNumbers(user){
 
 let snapshot;
 
-if(user.email===adminEmail){
+if(user.email === adminEmail){
 
-snapshot=await getDocs(collection(db,"numbers"));
+snapshot = await getDocs(collection(db,"numbers"));
 
 }else{
 
-const q=query(collection(db,"numbers"),where("rep","==",user.email));
+const q = query(collection(db,"numbers"), where("rep","==",user.email));
 
-snapshot=await getDocs(q);
+snapshot = await getDocs(q);
 
 }
 
@@ -274,16 +289,16 @@ render(snapshot,user);
 
 function render(snapshot,user){
 
-numbersList.innerHTML="";
+numbersList.innerHTML = "";
 
-let total=0;
-let renewed=0;
-let notRenewed=0;
-let money=0;
+let total = 0;
+let renewed = 0;
+let notRenewed = 0;
+let money = 0;
 
 snapshot.forEach(d=>{
 
-const n=d.data();
+const n = d.data();
 
 if(searchInput.value && !n.phone.includes(searchInput.value)) return;
 
@@ -299,19 +314,20 @@ notRenewed++;
 
 }
 
-money+=n.price||0;
+money += n.price || 0;
 
-const card=document.createElement("div");
+const card = document.createElement("div");
 
-card.className="card "+(n.renewed?"renewed":"notRenewed");
+card.className = "card " + (n.renewed ? "renewed":"notRenewed");
 
-if(user.email===adminEmail){
 
-card.innerHTML=`
+if(user.email === adminEmail){
+
+card.innerHTML = `
 <strong>${n.phone}</strong><br>
 العائلة: ${n.family}<br>
 السعر: ${n.price}<br>
-الحالة: ${n.renewed?"متجدد":"غير متجدد"}
+الحالة: ${n.renewed ? "متجدد":"غير متجدد"}
 <button onclick="toggle('${d.id}',${n.renewed})">
 تغيير الحالة
 </button>
@@ -319,9 +335,9 @@ card.innerHTML=`
 
 }else{
 
-card.innerHTML=`
+card.innerHTML = `
 <strong>${n.phone}</strong><br>
-الحالة: ${n.renewed?"متجدد":"غير متجدد"}
+الحالة: ${n.renewed ? "متجدد":"غير متجدد"}
 `;
 
 }
@@ -330,25 +346,26 @@ numbersList.appendChild(card);
 
 });
 
-statTotal.innerText=total;
-statRenewed.innerText=renewed;
-statNotRenewed.innerText=notRenewed;
-statMoney.innerText=money;
 
-if(user.email!==adminEmail){
+statTotal.innerText = total;
+statRenewed.innerText = renewed;
+statNotRenewed.innerText = notRenewed;
+statMoney.innerText = money;
 
-moneyBox.style.display="none";
+if(user.email !== adminEmail){
+
+moneyBox.style.display = "none";
 
 }
 
 }
 
 
-window.toggle=async(id,state)=>{
+window.toggle = async (id,state)=>{
 
 await updateDoc(doc(db,"numbers",id),{
 
-renewed:!state
+renewed: !state
 
 });
 
@@ -357,7 +374,7 @@ location.reload();
 };
 
 
-searchInput.oninput=()=>location.reload();
+searchInput.oninput = ()=> location.reload();
 
 </script>
 
