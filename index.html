@@ -232,10 +232,12 @@ dashboard.classList.remove("hidden");
 if(user.email === adminEmail){
 
 addSection.classList.remove("hidden");
+cancelAllSection.classList.remove("hidden");
 
 }else{
 
 addSection.classList.add("hidden");
+cancelAllSection.classList.add("hidden");
 
 }
 
@@ -376,6 +378,20 @@ location.reload();
 
 searchInput.oninput = ()=> location.reload();
 
+const cancelAllCheckbox = document.getElementById("cancelAllCheckbox");
+if(cancelAllCheckbox){
+	cancelAllCheckbox.onchange = async function(){
+		if(!this.checked) return;
+		if(!confirm('هل تريد فعلاً إلغاء حالة الكل (تحويل جميع السجلات إلى غير متجدد)؟')){ this.checked = false; return; }
+		const snapAll = await getDocs(collection(db,"numbers"));
+		const updates = [];
+		snapAll.forEach(docu => {
+			updates.push(updateDoc(doc(db,"numbers",docu.id), { renewed: false }));
+		});
+		await Promise.all(updates);
+		location.reload();
+	};
+}
 </script>
 
 </body>
