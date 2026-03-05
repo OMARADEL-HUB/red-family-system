@@ -42,10 +42,14 @@
 		/* admin controls */
 		#adminControls{display:flex;justify-content:flex-end;gap:8px}
 		#resetBtn{background:#f59e0b}
+		.filters{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+		.filters select{width:auto;min-width:200px}
 		#renewedSection, #notRenewedSection{margin:20px 0;padding:15px;border-radius:10px;background:rgba(255,255,255,0.8)}
-		#renewedSection h3{color:#16a34a}
-		#notRenewedSection h3{color:#ef4444}
+		#renewedSection summary, #notRenewedSection summary{font-weight:600;cursor:pointer;list-style:none;outline:none;display:flex;justify-content:space-between;align-items:center}
+		.toggle-icon{font-size:12px;margin-left:8px}
 		#renewedList, #notRenewedList{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:15px;margin-top:10px}
+		details[open] .toggle-icon{transform:rotate(180deg);}
+		details summary::-webkit-details-marker{display:none;}
 		@media (max-width:560px){
 			.container{padding:12px}
 			header{font-size:18px;padding:15px}
@@ -93,15 +97,20 @@
 				<div class="statCard" id="moneyBox"><span>إجمالي المبيعات</span><h2 id="statMoney">0</h2></div>
 			</div>
 
-			<input id="searchInput" placeholder="بحث برقم">
-			<div id="renewedSection">
-				<h3>الخطوط المتجددة</h3>
+			<div class="filters">
+				<select id="repFilter">
+					<option value="">جميع المندوبين</option>
+				</select>
+				<input id="searchInput" placeholder="بحث برقم">
+			</div>
+			<details id="renewedSection" open>
+				<summary>الخطوط المتجددة<span class="toggle-icon">▼</span></summary>
 				<div id="renewedList"></div>
-			</div>
-			<div id="notRenewedSection">
-				<h3>الخطوط غير المتجددة</h3>
+			</details>
+			<details id="notRenewedSection" open>
+				<summary>الخطوط غير متجددة<span class="toggle-icon">▼</span></summary>
 				<div id="notRenewedList"></div>
-			</div>
+			</details>
 
 			<!-- Requests section for admin -->
 			<div id="requestsSection" class="hidden card">
@@ -118,7 +127,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, where }
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 
@@ -316,6 +325,15 @@ snapshot = await getDocs(q);
 
 }
 
+// build rep list (for admin only)
+if(user.email === adminEmail){
+	const reps = new Set();
+	snapshot.forEach(d=>{ const r=d.data().rep; if(r) reps.add(r); });
+	// reset options preserving first
+	repFilter.innerHTML = '<option value="">جميع المندوبين</option>';
+	reps.forEach(r=>{ const o = document.createElement('option'); o.value=r; o.innerText=r; repFilter.appendChild(o); });
+}
+
 render(snapshot,user);
 
 }
@@ -336,6 +354,8 @@ snapshot.forEach(d=>{
 const n=d.data();
 
 if(searchInput.value && !n.phone.includes(searchInput.value)) return;
+			const repFilterElem = document.getElementById('repFilter');
+			if(repFilterElem && repFilterElem.value && n.rep !== repFilterElem.value) return;
 
 total++;
 
@@ -422,7 +442,9 @@ alert('خطأ في تغيير الحالة: ' + e.message);
 };
 
 
+const repFilter = document.getElementById('repFilter');
 searchInput.oninput = ()=> location.reload();
+repFilter && (repFilter.onchange = ()=> location.reload());
 
 window.deleteNumber = async (id) => {
 	if(!confirm('هل تريد حذف هذا الرقم نهائياً؟')) return;
